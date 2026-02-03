@@ -16,13 +16,38 @@ cd ChurnSense
 pip install -r requirements.txt
 ```
 
-Download data:
+Run notebooks 00 through 08 in order.
+
+## Dataset
+
+**Dataset:** Online Retail II  
+**Source:** UCI Machine Learning Repository (via Kaggle)  
+**Type:** Transaction-level behavioral data
+
+### Characteristics
+
+- Real-world e-commerce transactions
+- Time-stamped user activity
+- Suitable for behavioral modeling and retention analysis
+
+### Download
+
+Raw data is downloaded programmatically using kagglehub to ensure reproducibility:
+
 ```python
 import kagglehub
-kagglehub.dataset_download('mashlyn/online-retail-ii-uci')
+
+path = kagglehub.dataset_download("mashlyn/online-retail-ii-uci")
+print("Path to dataset files:", path)
 ```
 
-Run notebooks 00 through 08 in order.
+Or via Kaggle CLI:
+
+```bash
+kaggle datasets download -d mashlyn/online-retail-ii-uci -p data/raw --unzip
+```
+
+> Raw data stored under `data/raw/` remains immutable throughout the project.
 
 ## Structure
 
@@ -50,39 +75,27 @@ sql/
 
 **Models:** Logistic Regression (baseline), Random Forest, XGBoost (production)
 
-| Model | ROC-AUC |
-|-------|---------|
-| Logistic Regression | ~0.75 |
-| Random Forest | ~0.82 |
-| XGBoost | ~0.85 |
+| Model               | ROC-AUC |
+| ------------------- | ------- |
+| Logistic Regression | ~0.75   |
+| Random Forest       | ~0.82   |
+| XGBoost             | ~0.85   |
 
 ## Cost Framework
 
-| Outcome | Cost |
-|---------|------|
+| Outcome        | Cost |
+| -------------- | ---- |
 | Missed churner | $200 |
-| False alarm | $20 |
-| Ratio | 10:1 |
+| False alarm    | $20  |
+| Ratio          | 10:1 |
 
 Optimal threshold: 0.35
 
 ## Segments
 
-| Segment | Churn Prob | Action |
-|---------|------------|--------|
-| High Risk | 70%+ | Immediate outreach |
-| Medium Risk | 40-70% | Targeted offers |
-| Low Risk | 20-40% | Nurture campaigns |
-| Safe | <20% | Standard marketing |
-
-## Data
-
-Online Retail II (UCI) - 1M+ transactions, ~5K customers
-
-## Author
-
-Anuj Patel
-
-## License
-
-MIT
+| Segment     | Churn Prob | Action             |
+| ----------- | ---------- | ------------------ |
+| High Risk   | 70%+       | Immediate outreach |
+| Medium Risk | 40-70%     | Targeted offers    |
+| Low Risk    | 20-40%     | Nurture campaigns  |
+| Safe        | <20%       | Standard marketing |
