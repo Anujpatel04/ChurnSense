@@ -1,16 +1,3 @@
--- ============================================================================
--- ACTIVITY DECLINE ANALYSIS
--- Big-Tech-Grade User Retention & Churn Prediction System
--- ============================================================================
--- Purpose: Analyze how customer activity changes before churn
--- Key Question: How does activity decline before churn?
--- ============================================================================
-
--- ============================================================================
--- 1. PURCHASE FREQUENCY TREND BEFORE CHURN
--- ============================================================================
--- Compare activity in different time windows before last purchase
-
 WITH customer_timeline AS (
     SELECT 
         "Customer ID" as customer_id,
@@ -20,7 +7,6 @@ WITH customer_timeline AS (
     FROM transactions_clean
 ),
 
--- Classify each transaction by time-to-last-purchase
 activity_windows AS (
     SELECT 
         customer_id,
@@ -38,7 +24,6 @@ activity_windows AS (
     FROM customer_timeline
 ),
 
--- Get churned customers only (last purchase before Oct 10, 2011)
 churned_customers AS (
     SELECT DISTINCT customer_id
     FROM activity_windows
@@ -63,10 +48,6 @@ ORDER BY
     END;
 
 
--- ============================================================================
--- 2. REVENUE TREND BEFORE CHURN
--- ============================================================================
-
 WITH customer_revenue_timeline AS (
     SELECT 
         "Customer ID" as customer_id,
@@ -88,7 +69,7 @@ revenue_windows AS (
             ELSE '90+ days before'
         END as time_window
     FROM customer_revenue_timeline
-    WHERE last_purchase_date <= DATE('2011-10-10')  -- Churned customers
+    WHERE last_purchase_date <= DATE('2011-10-10')
 )
 
 SELECT 
@@ -107,11 +88,6 @@ ORDER BY
         WHEN 'Last 30 days' THEN 4
     END;
 
-
--- ============================================================================
--- 3. INTER-PURCHASE INTERVAL ANALYSIS
--- ============================================================================
--- Hypothesis: Days between purchases increase before churn
 
 WITH customer_orders AS (
     SELECT 
@@ -136,7 +112,6 @@ purchase_gaps AS (
     WHERE c2.order_date IS NOT NULL
 ),
 
--- Tag customers as churned or active
 customer_status AS (
     SELECT 
         "Customer ID" as customer_id,
@@ -160,11 +135,6 @@ JOIN customer_status cs ON pg.customer_id = cs.customer_id
 GROUP BY cs.status;
 
 
--- ============================================================================
--- 4. LAST 3 ORDERS PATTERN ANALYSIS
--- ============================================================================
--- How do the last 3 orders compare to historical average?
-
 WITH customer_orders_ranked AS (
     SELECT 
         "Customer ID" as customer_id,
@@ -184,7 +154,7 @@ last_vs_historical AS (
         AVG(CASE WHEN recency_rank > 3 THEN order_value END) as avg_historical_orders,
         total_orders
     FROM customer_orders_ranked
-    WHERE total_orders >= 6  -- Need enough history for comparison
+    WHERE total_orders >= 6
     GROUP BY customer_id, total_orders
 ),
 
@@ -210,11 +180,6 @@ JOIN customer_churn_status ccs ON lvh.customer_id = ccs.customer_id
 GROUP BY ccs.status;
 
 
--- ============================================================================
--- 5. PRODUCT CATEGORY SHIFT BEFORE CHURN
--- ============================================================================
--- Do customers buy different products before churning?
-
 WITH customer_products AS (
     SELECT 
         "Customer ID" as customer_id,
@@ -233,7 +198,7 @@ product_timing AS (
             ELSE 'Historical'
         END as period
     FROM customer_products
-    WHERE last_purchase_date <= DATE('2011-10-10')  -- Churned only
+    WHERE last_purchase_date <= DATE('2011-10-10')
 ),
 
 product_diversity AS (

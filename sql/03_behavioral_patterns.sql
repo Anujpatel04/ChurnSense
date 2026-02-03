@@ -1,30 +1,13 @@
--- ============================================================================
--- BEHAVIORAL PATTERNS ANALYSIS
--- Big-Tech-Grade User Retention & Churn Prediction System
--- ============================================================================
--- Purpose: Identify behavioral patterns that correlate with churn
--- Key Question: Which behavioral patterns predict churn?
--- ============================================================================
-
--- ============================================================================
--- 1. RFM SEGMENTATION AND CHURN CORRELATION
--- ============================================================================
-
 WITH customer_rfm AS (
     SELECT 
         "Customer ID" as customer_id,
-        -- Recency: Days since last purchase (from observation date)
         JULIANDAY(DATE('2011-10-10')) - JULIANDAY(MAX(InvoiceDate)) as recency_days,
-        -- Frequency: Number of unique orders
         COUNT(DISTINCT Invoice) as frequency,
-        -- Monetary: Total revenue
         SUM(Quantity * Price) as monetary,
-        -- First purchase date
         MIN(InvoiceDate) as first_purchase,
-        -- Last purchase date
         MAX(InvoiceDate) as last_purchase
     FROM transactions_clean
-    WHERE InvoiceDate <= DATE('2011-10-10')  -- Use data only up to observation point
+    WHERE InvoiceDate <= DATE('2011-10-10')
     GROUP BY "Customer ID"
 ),
 
@@ -34,14 +17,12 @@ rfm_scores AS (
         recency_days,
         frequency,
         monetary,
-        -- Churn label
         CASE WHEN recency_days > 60 THEN 1 ELSE 0 END as is_churned,
-        -- RFM Scores (1-5, where 5 is best)
-        NTILE(5) OVER (ORDER BY recency_days DESC) as R_score,  -- Lower recency = better
+        NTILE(5) OVER (ORDER BY recency_days DESC) as R_score,
         NTILE(5) OVER (ORDER BY frequency) as F_score,
         NTILE(5) OVER (ORDER BY monetary) as M_score
     FROM customer_rfm
-    WHERE first_purchase <= DATE('2011-08-10')  -- At least 60 days of history
+    WHERE first_purchase <= DATE('2011-08-10')
 )
 
 SELECT 
@@ -53,24 +34,16 @@ SELECT
     ROUND(100.0 * SUM(is_churned) / COUNT(*), 2) as churn_rate_pct
 FROM rfm_scores
 GROUP BY R_score, F_score, M_score
-HAVING COUNT(*) >= 20  -- Minimum sample size
+HAVING COUNT(*) >= 20
 ORDER BY churn_rate_pct DESC
 LIMIT 20;
 
 
--- ============================================================================
--- 2. PURCHASE TIME PATTERNS
--- ============================================================================
--- Does purchase timing (day of week, time of day) correlate with churn?
-
 WITH customer_purchase_times AS (
     SELECT 
         "Customer ID" as customer_id,
-        -- Day of week distribution
         AVG(CASE WHEN strftime('%w', InvoiceDate) IN ('0', '6') THEN 1 ELSE 0 END) as weekend_purchase_pct,
-        -- Time of day (hour)
         AVG(CAST(strftime('%H', InvoiceDate) AS INTEGER)) as avg_purchase_hour,
-        -- Morning vs Evening
         AVG(CASE WHEN CAST(strftime('%H', InvoiceDate) AS INTEGER) < 12 THEN 1 ELSE 0 END) as morning_purchase_pct,
         MAX(InvoiceDate) as last_purchase
     FROM transactions_clean
@@ -100,10 +73,6 @@ SELECT
 FROM time_patterns
 GROUP BY status;
 
-
--- ============================================================================
--- 3. BASKET SIZE AND COMPOSITION
--- ============================================================================
 
 WITH customer_baskets AS (
     SELECT 
@@ -154,10 +123,6 @@ FROM basket_churn
 GROUP BY status;
 
 
--- ============================================================================
--- 4. SEASONAL PURCHASE BEHAVIOR
--- ============================================================================
-
 WITH customer_seasonality AS (
     SELECT 
         "Customer ID" as customer_id,
@@ -172,10 +137,8 @@ WITH customer_seasonality AS (
 seasonal_patterns AS (
     SELECT 
         customer_id,
-        -- Q4 concentration (holiday shopping)
         SUM(CASE WHEN purchase_month IN ('10', '11', '12') THEN monthly_orders ELSE 0 END) * 1.0 / 
             SUM(monthly_orders) as q4_concentration,
-        -- Purchase month spread (diversity)
         COUNT(DISTINCT purchase_month) as active_months,
         CASE 
             WHEN MAX(last_purchase) <= DATE('2011-08-10') THEN 'Churned'
@@ -194,18 +157,13 @@ FROM seasonal_patterns
 GROUP BY status;
 
 
--- ============================================================================
--- 5. RETURN/CANCELLATION BEHAVIOR (Pre-cleaning snapshot)
--- ============================================================================
--- Note: This requires running on raw data before cleaning
-
 WITH customer_returns AS (
     SELECT 
         "Customer ID" as customer_id,
         COUNT(CASE WHEN Quantity < 0 THEN 1 END) as return_transactions,
         COUNT(*) as total_transactions,
         MAX(InvoiceDate) as last_purchase
-    FROM transactions_clean  -- Would need raw data for full analysis
+    FROM transactions_clean
     GROUP BY "Customer ID"
 ),
 
@@ -231,11 +189,6 @@ SELECT
 FROM return_patterns
 GROUP BY status;
 
-
--- ============================================================================
--- 6. FIRST PURCHASE EXPERIENCE
--- ============================================================================
--- Hypothesis: First purchase experience predicts long-term retention
 
 WITH first_purchases AS (
     SELECT 
@@ -284,11 +237,6 @@ FROM first_order_churn
 GROUP BY status;
 
 
--- ============================================================================
--- 7. PURCHASE VELOCITY TRENDS
--- ============================================================================
--- Compare early vs late purchase velocity
-
 WITH customer_timeline AS (
     SELECT 
         "Customer ID" as customer_id,
@@ -305,17 +253,15 @@ velocity_periods AS (
         customer_id,
         first_purchase,
         last_purchase,
-        -- First 90 days velocity
         COUNT(DISTINCT CASE 
             WHEN JULIANDAY(InvoiceDate) - JULIANDAY(first_purchase) <= 90 
             THEN Invoice END) as orders_first_90_days,
-        -- Days 91-180 velocity
         COUNT(DISTINCT CASE 
             WHEN JULIANDAY(InvoiceDate) - JULIANDAY(first_purchase) BETWEEN 91 AND 180 
             THEN Invoice END) as orders_next_90_days
     FROM customer_timeline
     GROUP BY customer_id, first_purchase, last_purchase
-    HAVING JULIANDAY(last_purchase) - JULIANDAY(first_purchase) >= 180  -- Need 6 months history
+    HAVING JULIANDAY(last_purchase) - JULIANDAY(first_purchase) >= 180
 ),
 
 velocity_churn AS (

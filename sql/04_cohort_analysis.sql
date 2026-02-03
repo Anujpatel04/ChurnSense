@@ -1,15 +1,3 @@
--- ============================================================================
--- COHORT ANALYSIS
--- Big-Tech-Grade User Retention & Churn Prediction System
--- ============================================================================
--- Purpose: Analyze customer retention by cohorts
--- Key Question: How do different customer cohorts retain over time?
--- ============================================================================
-
--- ============================================================================
--- 1. MONTHLY ACQUISITION COHORT RETENTION
--- ============================================================================
-
 WITH customer_cohorts AS (
     SELECT 
         "Customer ID" as customer_id,
@@ -31,7 +19,6 @@ cohort_retention AS (
     SELECT 
         cc.cohort_month,
         ca.activity_month,
-        -- Months since cohort start
         (CAST(strftime('%Y', ca.activity_month) AS INTEGER) - CAST(strftime('%Y', cc.cohort_month) AS INTEGER)) * 12 +
         (CAST(strftime('%m', ca.activity_month) AS INTEGER) - CAST(strftime('%m', cc.cohort_month) AS INTEGER)) as months_since_join,
         COUNT(DISTINCT cc.customer_id) as active_customers
@@ -56,14 +43,9 @@ SELECT
     ROUND(100.0 * cr.active_customers / cs.cohort_size, 2) as retention_rate_pct
 FROM cohort_retention cr
 JOIN cohort_sizes cs ON cr.cohort_month = cs.cohort_month
-WHERE cr.months_since_join <= 12  -- First year retention
+WHERE cr.months_since_join <= 12
 ORDER BY cr.cohort_month, cr.months_since_join;
 
-
--- ============================================================================
--- 2. COHORT CHURN CURVES
--- ============================================================================
--- Survival analysis style: When do customers churn relative to joining?
 
 WITH customer_lifetime AS (
     SELECT 
@@ -90,7 +72,7 @@ lifetime_buckets AS (
         END as lifetime_bucket,
         COUNT(*) as customers
     FROM customer_lifetime
-    WHERE last_purchase <= DATE('2011-10-10')  -- Completed lifetimes only
+    WHERE last_purchase <= DATE('2011-10-10')
     GROUP BY cohort_month, lifetime_bucket
 )
 
@@ -111,11 +93,6 @@ ORDER BY
         ELSE 7
     END;
 
-
--- ============================================================================
--- 3. COHORT VALUE ANALYSIS
--- ============================================================================
--- Compare customer value across cohorts
 
 WITH customer_value AS (
     SELECT 
@@ -139,10 +116,6 @@ FROM customer_value
 GROUP BY cohort_month
 ORDER BY cohort_month;
 
-
--- ============================================================================
--- 4. FIRST-TIME VS REPEAT CUSTOMER CHURN
--- ============================================================================
 
 WITH customer_orders AS (
     SELECT 
@@ -183,11 +156,6 @@ ORDER BY
     END;
 
 
--- ============================================================================
--- 5. SEASONAL COHORT ANALYSIS
--- ============================================================================
--- Do customers acquired in certain seasons have better retention?
-
 WITH customer_seasons AS (
     SELECT 
         "Customer ID" as customer_id,
@@ -211,7 +179,7 @@ seasonal_churn AS (
         AVG(total_orders) as avg_orders,
         SUM(CASE WHEN last_purchase <= DATE('2011-08-10') THEN 1 ELSE 0 END) as churned
     FROM customer_seasons
-    WHERE first_purchase <= DATE('2011-06-10')  -- Enough time to observe behavior
+    WHERE first_purchase <= DATE('2011-06-10')
     GROUP BY acquisition_season
 )
 
@@ -230,11 +198,6 @@ ORDER BY
         ELSE 4
     END;
 
-
--- ============================================================================
--- 6. TIME-TO-SECOND-PURCHASE ANALYSIS
--- ============================================================================
--- Critical metric: How quickly do customers make a second purchase?
 
 WITH customer_purchases AS (
     SELECT 
@@ -273,7 +236,6 @@ time_to_second AS (
     WHERE first_purchase <= DATE('2011-06-10')
 ),
 
--- Get last purchase for churn status
 customer_last AS (
     SELECT 
         "Customer ID" as customer_id,

@@ -1,21 +1,3 @@
--- ============================================================================
--- CHURN RATE ANALYSIS
--- Big-Tech-Grade User Retention & Churn Prediction System
--- ============================================================================
--- Purpose: Calculate overall and segmented churn rates
--- Definition: Churn = No purchase activity for 60+ consecutive days
--- ============================================================================
-
--- Note: These queries are designed to be executed against a SQL database
--- or translated to pandas using pandasql. Column names match the cleaned dataset.
-
--- ============================================================================
--- 1. OVERALL CHURN RATE
--- ============================================================================
-
--- Calculate churn rate based on 60-day inactivity window
--- Using observation date cutoff to avoid right-censoring
-
 WITH customer_last_purchase AS (
     SELECT 
         "Customer ID" as customer_id,
@@ -32,15 +14,13 @@ churn_labels AS (
         last_purchase_date,
         first_purchase_date,
         total_orders,
-        -- Observation date: 60 days before data end to allow lookforward
         DATE('2011-12-09') as observation_date,
-        -- Churn if last purchase was more than 60 days before observation end
         CASE 
-            WHEN last_purchase_date <= DATE('2011-10-10') THEN 1  -- 60 days before Dec 9
+            WHEN last_purchase_date <= DATE('2011-10-10') THEN 1
             ELSE 0 
         END as is_churned
     FROM customer_last_purchase
-    WHERE first_purchase_date <= DATE('2011-10-10')  -- Customer must exist before observation
+    WHERE first_purchase_date <= DATE('2011-10-10')
 )
 
 SELECT 
@@ -50,10 +30,6 @@ SELECT
     AVG(total_orders) as avg_orders_per_customer
 FROM churn_labels;
 
-
--- ============================================================================
--- 2. CHURN RATE BY CUSTOMER TENURE
--- ============================================================================
 
 WITH customer_tenure AS (
     SELECT 
@@ -100,10 +76,6 @@ ORDER BY
         ELSE 5
     END;
 
-
--- ============================================================================
--- 3. CHURN RATE BY PURCHASE FREQUENCY
--- ============================================================================
 
 WITH customer_frequency AS (
     SELECT 
@@ -152,10 +124,6 @@ ORDER BY
     END;
 
 
--- ============================================================================
--- 4. CHURN RATE BY MONETARY VALUE (RFM MONETARY)
--- ============================================================================
-
 WITH customer_monetary AS (
     SELECT 
         "Customer ID" as customer_id,
@@ -191,10 +159,6 @@ GROUP BY monetary_quintile
 ORDER BY monetary_quintile;
 
 
--- ============================================================================
--- 5. CHURN RATE BY COUNTRY
--- ============================================================================
-
 WITH customer_country AS (
     SELECT 
         "Customer ID" as customer_id,
@@ -213,7 +177,7 @@ country_churn AS (
     FROM customer_country
     WHERE first_purchase <= DATE('2011-10-10')
     GROUP BY Country
-    HAVING COUNT(*) >= 50  -- Only countries with significant sample
+    HAVING COUNT(*) >= 50
 )
 
 SELECT 
